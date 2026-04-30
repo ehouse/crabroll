@@ -3,6 +3,7 @@ pub fn add(left: u64, right: u64) -> u64 {
 }
 
 pub mod lexer;
+pub mod parser;
 pub mod types;
 
 #[cfg(test)]

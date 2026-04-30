@@ -1,3 +1,4 @@
+#[derive(Clone, PartialEq)]
 pub enum Op {
     Add,
     Sub,
@@ -5,7 +6,7 @@ pub enum Op {
     Div,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum RollKind {
     Advantage,
     Disadvantage,
@@ -37,7 +38,7 @@ pub struct EvalResult {
     pub avg: f64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Token {
     Number(f64),
     Die(RollKind, i32, u32), // kind, n, sides

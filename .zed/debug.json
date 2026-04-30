@@ -1,0 +1,13 @@
+[
+  {
+    "label": "Debug tests",
+    "adapter": "CodeLLDB",
+    "request": "launch",
+    "sourceLanguages": ["rust"],
+    "build": {
+      "command": "bash",
+      "args": ["scripts/build-test.sh"]
+    },
+    "program": "$ZED_WORKTREE_ROOT/target/debug/crabroll-test"
+  }
+]
