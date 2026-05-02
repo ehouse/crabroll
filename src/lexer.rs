@@ -1,18 +1,21 @@
 use crate::types::{RollKind, Token};
 use chumsky::prelude::*;
 
+type Extra<'src> = extra::Err<Simple<'src, char>>;
+
+/// Builds a lexer that tokenises a raw dice expression string into a flat list of tokens.
+/// Handles numbers, dice rolls (with optional advantage/disadvantage prefix), arithmetic operators, and parentheses.
+/// The token list is passed directly to the parser.
 pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Token>, extra::Err<Simple<'src, char>>> {
     // Parse out left and right parenthesis
     let lparen = just('(').to(Token::LParen);
     let rparen = just(')').to(Token::RParen);
 
     // Parses a base-10 integer as Token::Number(f64) for standalone numbers in expressions.
-    let number = text::int::<_, extra::Err<Simple<'src, char>>>(10)
-        .map(|s: &str| Token::Number(s.parse().unwrap()));
+    let number = text::int::<_, Extra<'src>>(10).map(|s: &str| Token::Number(s.parse().unwrap()));
 
     // Parses a base-10 integer as a raw i32. Used internally by the die parser for n and sides.
-    let integer =
-        text::int::<_, extra::Err<Simple<'src, char>>>(10).map(|s: &str| s.parse::<i32>().unwrap());
+    let integer = text::int::<_, Extra<'src>>(10).map(|s: &str| s.parse::<i32>().unwrap());
 
     // Each operator matches a single character and replaces it with a constant Token variant.
     let plus = just('+').to(Token::Plus);
