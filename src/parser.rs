@@ -1,51 +1,62 @@
 use crate::types::{Expr, Op, Token};
 use chumsky::prelude::*;
 
+/// Combines a left-hand expression and an (op, right) pair into a Binary node.
+/// Passed by name to `foldl` so it can be shared between the factor and expr parsers.
+fn fold_binary(left: Expr, (op, right): (Op, Expr)) -> Expr {
+    Expr::Binary {
+        op,
+        left: Box::new(left),
+        right: Box::new(right),
+    }
+}
+
+/// Builds a parser for dice expressions.
+/// Handles standard arithmetic operators with correct precedence, dice rolls, and parenthesised groups.
+/// Returns an `Expr` tree ready to be passed to the evaluator.
 pub fn parser<'src>() -> impl Parser<'src, &'src [Token], Expr, extra::Err<Simple<'src, Token>>> {
-    // Matches a single number token and lifts it into an Expr::Number.
-    let number = select! { Token::Number(n) => Expr::Number(n) };
+    recursive(|expr| {
+        // Matches a single number token and lifts it into an Expr::Number.
+        let number = select! { Token::Number(n) => Expr::Number(n) };
 
-    // Matches a single die token and lifts it into an Expr::Roll.
-    let die = select! { Token::Die(kind, n, sides) => Expr::Roll { kind, n, sides } };
+        // Matches a single die token and lifts it into an Expr::Roll.
+        let die = select! { Token::Die(kind, n, sides) => Expr::Roll { kind, n, sides } };
 
-    // TERM: the smallest unit of an expression, either a die roll or a bare number.
-    let term = die.or(number);
+        // Matches a parenthesised expression, recursing back to the top of the grammar.
+        // This is what gives parens their precedence-override behaviour.
+        let group = expr.delimited_by(just(Token::LParen), just(Token::RParen));
 
-    // FACTOR: handles * and / with left-associativity.
-    // Parses a term, then folds zero or more (* term) or (/ term) pairs into it,
-    // producing a left-leaning Binary tree. Higher precedence than + and -.
-    // Example: `2 * 3 * 4` becomes Binary(*, Binary(*, 2, 3), 4).
-    let factor = term.clone().foldl(
-        just(Token::Star)
-            .to(Op::Mul)
-            .or(just(Token::Slash).to(Op::Div))
-            .then(term)
-            .repeated(),
-        |left, (op, right)| Expr::Binary {
-            op,
-            left: Box::new(left),
-            right: Box::new(right),
-        },
-    );
+        // TERM: the smallest unit of an expression: a die roll, a bare number, or a grouped sub-expression.
+        let term = die.or(number).or(group);
 
-    // EXP: handles + and - with left-associativity.
-    // Parses a factor, then folds zero or more (+ factor) or (- factor) pairs into it.
-    // Lower precedence than * and /, so `2 + 3 * 4` correctly parses as `2 + (3 * 4)`
-    // because the `3 * 4` is fully resolved as a factor before expr sees it.
-    let expr = factor.clone().foldl(
-        just(Token::Plus)
-            .to(Op::Add)
-            .or(just(Token::Minus).to(Op::Sub))
-            .then(factor)
-            .repeated(),
-        |left, (op, right)| Expr::Binary {
-            op,
-            left: Box::new(left),
-            right: Box::new(right),
-        },
-    );
+        // FACTOR: handles * and / with left-associativity.
+        // Parses a term, then folds zero or more (* term) or (/ term) pairs into it,
+        // producing a left-leaning Binary tree. Higher precedence than + and -.
+        // Example: `2 * 3 * 4` becomes Binary(*, Binary(*, 2, 3), 4).
+        let factor = term.clone().foldl(
+            just(Token::Star)
+                .to(Op::Mul)
+                .or(just(Token::Slash).to(Op::Div))
+                .then(term)
+                .repeated(),
+            fold_binary,
+        );
 
-    expr
+        // EXP: handles + and - with left-associativity.
+        // Parses a factor, then folds zero or more (+ factor) or (- factor) pairs into it.
+        // Lower precedence than * and /, so `2 + 3 * 4` correctly parses as `2 + (3 * 4)`
+        // because the `3 * 4` is fully resolved as a factor before expr sees it.
+        let expr = factor.clone().foldl(
+            just(Token::Plus)
+                .to(Op::Add)
+                .or(just(Token::Minus).to(Op::Sub))
+                .then(factor)
+                .repeated(),
+            fold_binary,
+        );
+
+        expr
+    })
 }
 
 #[cfg(test)]
@@ -135,7 +146,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_grouped_expression() {
         let tokens = [
             Token::LParen,
@@ -146,7 +156,8 @@ mod tests {
             Token::Star,
             Token::Number(3.0),
         ];
-        parse(&tokens).expect("grouping not yet implemented");
+        let expr = parse(&tokens).expect("should parse");
+        assert!(matches!(expr, Expr::Binary { op: Op::Mul, .. }));
     }
 
     #[test]

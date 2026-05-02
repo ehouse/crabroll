@@ -2,6 +2,10 @@ use crate::types::{RollKind, Token};
 use chumsky::prelude::*;
 
 pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Token>, extra::Err<Simple<'src, char>>> {
+    // Parse out left and right parenthesis
+    let lparen = just('(').to(Token::LParen);
+    let rparen = just(')').to(Token::RParen);
+
     // Parses a base-10 integer as Token::Number(f64) for standalone numbers in expressions.
     let number = text::int::<_, extra::Err<Simple<'src, char>>>(10)
         .map(|s: &str| Token::Number(s.parse().unwrap()));
@@ -35,7 +39,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<Token>, extra::Err<Simp
             Token::Die(kind, n, sides as u32)
         });
 
-    choice((die, number, plus, minus, star, slash))
+    choice((die, number, plus, minus, star, slash, lparen, rparen))
         .padded()
         .repeated()
         .collect()
