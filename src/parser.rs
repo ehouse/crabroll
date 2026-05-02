@@ -5,9 +5,11 @@ pub fn parser<'src>() -> impl Parser<'src, &'src [Token], Expr, extra::Err<Simpl
     // Matches a single number token and lifts it into an Expr::Number.
     let number = select! { Token::Number(n) => Expr::Number(n) };
 
-    // TERM: the smallest unit of an expression -- a single atom with no operators.
-    // Currently just numbers, but will grow to include dice rolls and parenthesised groups.
-    let term = number;
+    // Matches a single die token and lifts it into an Expr::Roll.
+    let die = select! { Token::Die(kind, n, sides) => Expr::Roll { kind, n, sides } };
+
+    // TERM: the smallest unit of an expression, either a die roll or a bare number.
+    let term = die.or(number);
 
     // FACTOR: handles * and / with left-associativity.
     // Parses a term, then folds zero or more (* term) or (/ term) pairs into it,
@@ -91,24 +93,45 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_die() {
         let tokens = [Token::Die(RollKind::Normal, 2, 6)];
-        parse(&tokens).expect("die not yet implemented");
+        let expr = parse(&tokens).expect("should parse");
+        assert!(matches!(
+            expr,
+            Expr::Roll {
+                kind: RollKind::Normal,
+                n: 2,
+                sides: 6
+            }
+        ));
     }
 
     #[test]
-    #[should_panic]
     fn test_advantage() {
         let tokens = [Token::Die(RollKind::Advantage, 1, 20)];
-        parse(&tokens).expect("advantage not yet implemented");
+        let expr = parse(&tokens).expect("should parse");
+        assert!(matches!(
+            expr,
+            Expr::Roll {
+                kind: RollKind::Advantage,
+                n: 1,
+                sides: 20
+            }
+        ));
     }
 
     #[test]
-    #[should_panic]
     fn test_disadvantage() {
         let tokens = [Token::Die(RollKind::Disadvantage, 1, 20)];
-        parse(&tokens).expect("disadvantage not yet implemented");
+        let expr = parse(&tokens).expect("should parse");
+        assert!(matches!(
+            expr,
+            Expr::Roll {
+                kind: RollKind::Disadvantage,
+                n: 1,
+                sides: 20
+            }
+        ));
     }
 
     #[test]
@@ -124,6 +147,17 @@ mod tests {
             Token::Number(3.0),
         ];
         parse(&tokens).expect("grouping not yet implemented");
+    }
+
+    #[test]
+    fn test_die_in_expression() {
+        let tokens = [
+            Token::Die(RollKind::Normal, 2, 6),
+            Token::Plus,
+            Token::Number(3.0),
+        ];
+        let expr = parse(&tokens).expect("should parse");
+        assert!(matches!(expr, Expr::Binary { op: Op::Add, .. }));
     }
 
     #[test]
