@@ -46,16 +46,14 @@ pub fn parser<'src>() -> impl Parser<'src, &'src [Token], Expr, extra::Err<Simpl
         // Parses a factor, then folds zero or more (+ factor) or (- factor) pairs into it.
         // Lower precedence than * and /, so `2 + 3 * 4` correctly parses as `2 + (3 * 4)`
         // because the `3 * 4` is fully resolved as a factor before expr sees it.
-        let expr = factor.clone().foldl(
+        factor.clone().foldl(
             just(Token::Plus)
                 .to(Op::Add)
                 .or(just(Token::Minus).to(Op::Sub))
                 .then(factor)
                 .repeated(),
             fold_binary,
-        );
-
-        expr
+        )
     })
 }
 
