@@ -20,7 +20,8 @@ pub fn parser<'src>() -> impl Parser<'src, &'src [Token], Expr, extra::Err<Simpl
         let number = select! { Token::Number(n) => Expr::Number(n) };
 
         // Matches a single die token and lifts it into an Expr::Roll.
-        let die = select! { Token::Die(kind, n, sides) => Expr::Roll { kind, n, sides } };
+        let die =
+            select! { Token::Die(kind, n, sides) => Expr::Roll { kind, n, sides, results: None } };
 
         // Matches a parenthesised expression, recursing back to the top of the grammar.
         // This is what gives parens their precedence-override behaviour.
@@ -110,7 +111,8 @@ mod tests {
             Expr::Roll {
                 kind: RollKind::Normal,
                 n: 2,
-                sides: 6
+                sides: 6,
+                results: None,
             }
         ));
     }
@@ -124,7 +126,8 @@ mod tests {
             Expr::Roll {
                 kind: RollKind::Advantage,
                 n: 1,
-                sides: 20
+                sides: 20,
+                results: None,
             }
         ));
     }
@@ -138,7 +141,8 @@ mod tests {
             Expr::Roll {
                 kind: RollKind::Disadvantage,
                 n: 1,
-                sides: 20
+                sides: 20,
+                results: None,
             }
         ));
     }

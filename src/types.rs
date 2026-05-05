@@ -20,9 +20,7 @@ pub enum Expr {
         kind: RollKind,
         n: i32,
         sides: u32,
-    },
-    RollValue {
-        results: Vec<i32>,
+        results: Option<Vec<i32>>,
     },
     Binary {
         op: Op,
