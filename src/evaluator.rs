@@ -40,8 +40,8 @@ pub fn evaluate(expr: Expr) -> EvalResult {
 
             let value = match kind {
                 RollKind::Normal => results.iter().sum::<i32>() as f64,
-                RollKind::Advantage => *results.iter().max().unwrap() as f64,
-                RollKind::Disadvantage => *results.iter().min().unwrap() as f64,
+                RollKind::Advantage => results[0].max(results[1]) as f64,
+                RollKind::Disadvantage => results[0].min(results[1]) as f64,
             };
 
             // Generating averages for rolls is a nightmare, especially advantage/disadvantage
